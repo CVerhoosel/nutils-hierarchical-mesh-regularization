@@ -65,9 +65,10 @@ def regularize_mesh(topo, difference):
 
     # Refine the hierarhical mesh until satisfying the requirement on the
     # size difference between neighboring elements.
-    elem_indices = None
-    while elem_indices is None or len(elem_indices)>0:
+    while True:
         elem_indices = get_elements_to_be_refined(topo, difference)
+        if not elem_indices:
+            break
         topo = topo.refined_by(elem_indices)
 
     return topo
