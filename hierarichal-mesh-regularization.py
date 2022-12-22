@@ -58,7 +58,7 @@ def main(nelems: int, nref: int, xref: typing.Tuple[float,float], difference: in
     postprocess(topo, geom, f'regularized.png')
 
     # Return the sizes of the elements.
-    return topo.sample('uniform', 1).eval(function.sqrt(function.J(geom)))
+    return topo.sample('uniform', 1).eval(numpy.sqrt(function.J(geom)))
 
 # Function implementing the mesh-regularization algorithm.
 def regularize_mesh(topo, difference):
@@ -119,7 +119,7 @@ def get_elements_to_be_refined(topo, difference):
 def postprocess(topo, geom, name):
 
     bezier = topo.sample('bezier',2)
-    x, level = bezier.eval([geom, -function.log2(function.J(geom))/2])
+    x, level = bezier.eval([geom, -numpy.log2(function.J(geom))/2])
     with export.mplfigure(name, dpi=150) as fig:
         ax  = fig.add_subplot(111, title='Refinement levels')
         im  = ax.tripcolor(x[:,0], x[:,1], bezier.tri, level, cmap='Accent')
