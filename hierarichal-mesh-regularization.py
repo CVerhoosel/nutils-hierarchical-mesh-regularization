@@ -58,16 +58,17 @@ def main(nelems: int, nref: int, xref: typing.Tuple[float,float], difference: in
     postprocess(topo, geom, f'regularized.png')
 
     # Return the sizes of the elements.
-    return topo.sample('uniform', 1).eval(function.sqrt(function.J(geom)))
+    return topo.sample('uniform', 1).eval(numpy.sqrt(function.J(geom)))
 
 # Function implementing the mesh-regularization algorithm.
 def regularize_mesh(topo, difference):
 
     # Refine the hierarhical mesh until satisfying the requirement on the
     # size difference between neighboring elements.
-    elem_indices = None
-    while elem_indices is None or len(elem_indices)>0:
+    while True:
         elem_indices = get_elements_to_be_refined(topo, difference)
+        if not elem_indices:
+            break
         topo = topo.refined_by(elem_indices)
 
     return topo
@@ -80,38 +81,15 @@ def get_elements_to_be_refined(topo, difference):
     # Initiate the list of elements to be refined.
     elem_indices = []
 
-    # Loop over the elements in the hierarchical mesh.
-    for h_tr in topo.transforms:
-
-        # Create the uniform mesh corresponding to the level of the considered
-        # element in the hierarchical mesh.
-        topo0 = topo.basetopo
-        while not topo0.transforms.contains(h_tr):
-            topo0 = topo0.refined
-
-        # Get the `index` of the hierarhical element in the uniform mesh.
-        index, tail = topo0.transforms.index_with_tail(h_tr)
-
-        # Loop over the neighbours of the element identified in the uniform mesh.
-        # Negative entries (no neighbour) are skipped.
-        for neighbour in [n for n in topo0.connectivity[index] if n>=0]:
-
-            # Get the transformation of the neighbour.
-            neighbour_tr = topo0.transforms[neighbour]
-
-            # Check whether the neighbour resides inside one of the elements
-            # of the hierarchical mesh.
-            if topo.transforms.contains_with_tail(neighbour_tr):
-
-                # Get the index of the hierarhcical mesh element index and
-                # transformation tail of the neighboring element.
-                neighbour_index, neighbour_tail = topo.transforms.index_with_tail(neighbour_tr)
-
-                # Mark the neighbour for refinement is the length of the tail
-                # (number of further refinements) is larger than the specified
-                # allowable difference.
-                if len(neighbour_tail) > difference and neighbour_index not in elem_indices:
-                    elem_indices.append(neighbour_index)
+    for transforms in topo.interfaces.transforms, topo.interfaces.opposites:
+        for trans in transforms:
+            index, tail = topo.transforms.index_with_tail(trans)
+            if len(tail) > difference + 1:
+                # Mark the element for refinement if the transformation from
+                # interface to topology (consisting of one edge-to-volume
+                # transformation and any number of coarsening transformations)
+                # is longer than the specified allowable difference plus 1.
+                elem_indices.append(index)
 
     return elem_indices
 
@@ -119,7 +97,7 @@ def get_elements_to_be_refined(topo, difference):
 def postprocess(topo, geom, name):
 
     bezier = topo.sample('bezier',2)
-    x, level = bezier.eval([geom, -function.log2(function.J(geom))/2])
+    x, level = bezier.eval([geom, -numpy.log2(function.J(geom))/2])
     with export.mplfigure(name, dpi=150) as fig:
         ax  = fig.add_subplot(111, title='Refinement levels')
         im  = ax.tripcolor(x[:,0], x[:,1], bezier.tri, level, cmap='Accent')
