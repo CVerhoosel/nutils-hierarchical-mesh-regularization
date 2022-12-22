@@ -80,38 +80,15 @@ def get_elements_to_be_refined(topo, difference):
     # Initiate the list of elements to be refined.
     elem_indices = []
 
-    # Loop over the elements in the hierarchical mesh.
-    for h_tr in topo.transforms:
-
-        # Create the uniform mesh corresponding to the level of the considered
-        # element in the hierarchical mesh.
-        topo0 = topo.basetopo
-        while not topo0.transforms.contains(h_tr):
-            topo0 = topo0.refined
-
-        # Get the `index` of the hierarhical element in the uniform mesh.
-        index, tail = topo0.transforms.index_with_tail(h_tr)
-
-        # Loop over the neighbours of the element identified in the uniform mesh.
-        # Negative entries (no neighbour) are skipped.
-        for neighbour in [n for n in topo0.connectivity[index] if n>=0]:
-
-            # Get the transformation of the neighbour.
-            neighbour_tr = topo0.transforms[neighbour]
-
-            # Check whether the neighbour resides inside one of the elements
-            # of the hierarchical mesh.
-            if topo.transforms.contains_with_tail(neighbour_tr):
-
-                # Get the index of the hierarhcical mesh element index and
-                # transformation tail of the neighboring element.
-                neighbour_index, neighbour_tail = topo.transforms.index_with_tail(neighbour_tr)
-
-                # Mark the neighbour for refinement is the length of the tail
-                # (number of further refinements) is larger than the specified
-                # allowable difference.
-                if len(neighbour_tail) > difference and neighbour_index not in elem_indices:
-                    elem_indices.append(neighbour_index)
+    for transforms in topo.interfaces.transforms, topo.interfaces.opposites:
+        for trans in transforms:
+            index, tail = topo.transforms.index_with_tail(trans)
+            if len(tail) > difference + 1:
+                # Mark the element for refinement if the transformation from
+                # interface to topology (consisting of one edge-to-volume
+                # transformation and any number of coarsening transformations)
+                # is longer than the specified allowable difference plus 1.
+                elem_indices.append(index)
 
     return elem_indices
 
